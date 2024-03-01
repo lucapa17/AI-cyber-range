@@ -34,7 +34,7 @@ After building the images or pulling them from Docker Hub, you can run the conta
   ```
 - #### Scenario 2: Evasion Attack against EMBER GBDT hosted on a Server
   ```bash
-  docker compose -f docker-compose-malconv.yml up
+  docker compose -f docker-compose-ember.yml up
   ```
 - #### Scenario 3: Evasion Attack against VirusTotal
   ```bash
