@@ -1,0 +1,10 @@
+git+https://github.com/lucapa17/secml_malware
+secml
+uvicorn[standard]
+fastapi
+torch
+torchvision
+python-magic
+vt-py
+lightgbm==3.3.5
+git+https://github.com/zangobot/ember

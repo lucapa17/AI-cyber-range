@@ -1,0 +1,10 @@
+git+https://github.com/lucapa17/secml_malware
+secml
+torch
+torchvision
+python-magic
+cmd2
+vt-py
+colorama
+lightgbm==3.3.5
+git+https://github.com/zangobot/ember

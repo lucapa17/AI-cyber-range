@@ -1,0 +1,4 @@
+target remote --antivirus_url http://server:8000/analyze
+blackbox --query_budget 100 --population_size 10 --type gamma_sections --inject 30 --goodware_folder /app/goodware_samples
+data /app/malware_samples
+run

@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  server:
+    image: image-server
+    container_name: server
+    ports:
+      - "8000:8000"
+    environment:
+      - classifier=malconv
+
+  client:
+    image: image-client
+    container_name: client
+    volumes:
+      - "./data/goodware_samples:/app/goodware_samples"
+      - "./data/malware_samples:/app/malware_samples"
+      - "./query/evasion-remote-classifier:/app/query"
+    depends_on:
+      - server

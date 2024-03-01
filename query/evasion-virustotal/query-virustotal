@@ -1,0 +1,4 @@
+target remote --antivirus virustotal --apikey <your_virustotal_apiKey>
+blackbox --query_budget 10 --population_size 3 --type gamma_sections --inject 5 --goodware_folder /app/goodware_samples
+data /app/malware_samples
+run
