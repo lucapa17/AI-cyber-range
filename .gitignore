@@ -1,1 +1,3 @@
 __pycache__/
+data/malware_samples/
+data/goodware_samples/
