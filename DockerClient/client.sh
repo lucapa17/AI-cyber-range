@@ -7,7 +7,7 @@ exit_func() {
 }
 trap exit_func SIGINT
 
-sleep 5
+sleep 10
 while true; do
     files=("$input_directory"/*)
     if [ ${#files[@]} -gt 0 ]; then
