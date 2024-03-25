@@ -3,8 +3,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y git libmagic1 nano dos2unix
 COPY requirements.txt /tmp
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
-COPY client.sh .
-RUN dos2unix client.sh
 RUN git clone https://github.com/lucapa17/toucanstrike
 RUN mkdir logs
+COPY client.sh .
+RUN dos2unix client.sh
 CMD ["bash", "client.sh"]

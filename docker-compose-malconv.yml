@@ -8,9 +8,12 @@ services:
       - "8000:8000"
     environment:
       - classifier=malconv
+      - load_pretrained_model=true
+      - fine_tuning=false
+      - PYTHONUNBUFFERED=1
 
   client:
-    image: image-client
+    image: image-client-evasion
     container_name: client
     volumes:
       - "./data/goodware_samples:/app/goodware_samples"
