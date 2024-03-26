@@ -30,7 +30,7 @@ services:
       - surrogate_model=embernn
       - perc_bytes_poisoning=1
       - training_samples=6000
-      - num_malware_files=200
-      - num_goodware_files=250
+      - num_malware_files=250
+      - num_goodware_files=200
       - PYTHONUNBUFFERED=1
 
