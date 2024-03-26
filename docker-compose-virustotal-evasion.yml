@@ -2,7 +2,7 @@ version: '3'
 
 services:
   client:
-    image: image-client
+    image: image-client-evasion
     container_name: client
     volumes:
       - "./data/goodware_samples:/app/goodware_samples"
