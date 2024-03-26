@@ -34,20 +34,20 @@ After building the images or pulling them from Docker Hub, you can run the conta
   If you wish to modify the attacks and use different strategies and parameters, you can modify the contents of the `query` folder.
   - #### Scenario 1: Evasion Attack against Malconv hosted on a Server
     ```bash
-    docker compose -f docker-compose-malconv.yml up
+    docker compose -f docker-compose-malconv-evasion.yml up
     ```
   - #### Scenario 2: Evasion Attack against EMBER GBDT hosted on a Server
     ```bash
-    docker compose -f docker-compose-emberGBDT.yml up
+    docker compose -f docker-compose-emberGBDT-evasion.yml up
     ```
   - #### Scenario 3: Evasion Attack against VirusTotal
     ```bash
-    docker compose -f docker-compose-virustotal.yml up
+    docker compose -f docker-compose-virustotal-evasion.yml up
     ```
     For Scenario 3, make sure to modify the queries in the `query/evasion-virustotal` folder, specifying your own API key for VirusTotal.
   - #### Scenario 4: Evasion Attack against MetaDefender
     ```bash
-    docker compose -f docker-compose-metadefender.yml up
+    docker compose -f docker-compose-metadefender-evasion.yml up
     ```
     For Scenario 4, make sure to modify the queries in the `query/evasion-metadefender` folder, specifying your own API key for MetaDefender.
 - ### Poisoning attacks
