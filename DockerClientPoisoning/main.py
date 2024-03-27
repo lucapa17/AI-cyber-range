@@ -322,7 +322,6 @@ print("Poisoning Phase\n")
 for file_name in os.listdir(poisoned_folder):
     file_path = os.path.join(poisoned_folder, file_name)
     pe = pefile.PE(file_path)
-    print(pe.FILE_HEADER.TimeDateStamp)
     with open(file_path, 'rb') as file:
         code = file.read()
     print(f'Computing prediction for {file_name}')
