@@ -6,17 +6,21 @@ from fastapi import FastAPI, Request
 from secml.array import CArray
 from secml_malware.attack.blackbox.c_wrapper_phi import CEnd2EndWrapperPhi, CEmberWrapperPhi, CRemoteWrapperPhi
 from secml_malware.models import MalConv, CClassifierEnd2EndMalware, CClassifierEmber, CClassifierRemote
+from secml_malware.utils.is_valid_url import isValidUrl
 import ember
+import asyncio
+import time
 
 app = FastAPI()
 
 files = []
 X_train = None
 y_train = None
+next_fine_tuning = 0
 i = 0
 
 classifier = os.getenv("classifier")
-antivirus_service = os.getenv("antivirus_service")
+labeling_service = os.getenv("labeling_service")
 apiKeys = os.getenv("apiKeys")
 training_samples = os.getenv("training_samples")
 fine_tuning = os.getenv("fine_tuning", "false").lower() == "true"
@@ -72,7 +76,8 @@ else:
 
 @app.post('/analyze')
 async def analyze(request: Request):
-    global i, X_train, y_train
+    global i, X_train, y_train, next_fine_tuning
+    
     data = await request.body()
     fp = request.headers.get("Filename")
     # from bytes to CArray
@@ -84,10 +89,7 @@ async def analyze(request: Request):
     print(f"> Request number: {i}")
     print(f"> The file named: {fp} is a malware with confidence {confidence[0, 1].item()}")
     conf = confidence[1][0].item()
-    
-    if fine_tuning:
-        files.append(convertedData)
-        
+       
     encoded_data = {
         "file name": fp, 
         "score": conf,
@@ -97,26 +99,42 @@ async def analyze(request: Request):
         json.dump(encoded_data, file)
         file.write('\n')
     
-    if classifier == "emberGBDT" and fine_tuning and len(files) == int(samples_for_fine_tuning):
-        X = []
-        for file in files:
-            X.append(np.squeeze(net.extract_features(file).tondarray()))
-        y = label_data(files)
-        X = np.array(X)
-        y = np.array(y)
+    if fine_tuning :
+        files.append(convertedData)
         
-        X_train = np.concatenate((X_train, X), axis=0)
-        y_train = np.concatenate((y_train, y), axis=0)
-        net.classifier._fit(X_train, y_train)
-            
-        files.clear()
-  
+        if len(files) >= int(samples_for_fine_tuning) and time.time() >= next_fine_tuning:
+            asyncio.create_task(process_fine_tuning())
+
     return str(conf)
 
+async def process_fine_tuning():
+    print("Fine tuning in progress...")
+    global X_train, y_train, next_fine_tuning
+    X = []
+    for file in files:
+        X.append(np.squeeze(net.extract_features(file).tondarray()))
+    y = label_data(files)
+    X = np.array(X)
+    y = np.array(y)
+
+    X_train = np.concatenate((X_train, X), axis=0)
+    y_train = np.concatenate((y_train, y), axis=0)
+    net.classifier._fit(X_train, y_train)
+
+    files.clear()
+    print("Fine tuning completed.")
+    one_day_in_seconds = 24 * 60 * 60
+    current_time = time.time()
+    next_fine_tuning = current_time + one_day_in_seconds
+    print("Next fine-tuning: ", datetime.datetime.fromtimestamp(next_fine_tuning).strftime('%Y-%m-%d %H:%M:%S'))
+
 def label_data(files):
-    remote_classifier = CClassifierRemote(antivirus=antivirus_service, apiKey=apiKeys.split(","))
+    if isValidUrl(labeling_service):
+        remote_classifier = CClassifierRemote(url=labeling_service)
+    else:
+        remote_classifier = CClassifierRemote(antivirus=labeling_service, apiKey=apiKeys.split(","))
     remote_classifier = CRemoteWrapperPhi(remote_classifier)
-    print("antivirus service", antivirus_service)
+    print("antivirus labeling service", labeling_service)
     print("Labeling files...")
     y_new = []
     for file in files:
