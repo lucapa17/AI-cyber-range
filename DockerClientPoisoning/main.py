@@ -292,11 +292,15 @@ elif surrogate_model == "embernn":
 results_gw_post = model.predict(X_gw)
 results_mw_post = model.predict(X_mw)
 
-print("number of false positives before the attack (SURROGATE MODEL): ", len(results_gw_pre[results_gw_pre > 0.5]))
-print("number of false positives after the attack (SURROGATE MODEL): ", len(results_gw_post[results_gw_post > 0.5]))
+print(f'number of false negatives before the attack (SURROGATE MODEL): {len(results_mw_pre[results_mw_pre < 0.5])}')
+print(f'number of false negatives after the attack (SURROGATE MODEL): {len(results_mw_post[results_mw_post < 0.5])}')
+print(f'Average confidence level of Malwares before the attack (SURROGATE MODEL): {np.sum(results_mw_pre)/len(results_mw_pre)}')
+print(f'Average confidence level of Malwares after the attack (SURROGATE MODEL): {np.sum(results_mw_post)/len(results_mw_post)}\n')
 
-print("number of false negatives before the attack (SURROGATE MODEL): ", len(results_mw_pre[results_mw_pre < 0.5]))
-print("number of false negatives after the attack (SURROGATE MODEL): ", len(results_mw_post[results_mw_post < 0.5]))
+print(f'number of false positives before the attack (SURROGATE MODEL): {len(results_gw_pre[results_gw_pre > 0.5])}')
+print(f'number of false positives after the attack (SURROGATE MODEL): {len(results_gw_post[results_gw_post > 0.5])}')
+print(f'Average confidence level of Goodwares before the attack (SURROGATE MODEL): {np.sum(results_gw_pre)/len(results_gw_pre)}')
+print(f'Average confidence level of Goodwares after the attack (SURROGATE MODEL): {np.sum(results_gw_post)/len(results_gw_post)}')
 
 print("\nBeginning of Attack\n")
     
