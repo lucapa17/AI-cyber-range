@@ -8,12 +8,11 @@ services:
       - "8000:8000"
     environment:
       - classifier=emberGBDT
-      - antivirus_service=metadefender
-      - apiKeys=apikey1,apikey2,apikey3
+      - labeling_service=http://labeling_service:8000/analyze
       - load_pretrained_model=false
-      - training_samples=6000
+      - training_samples=20000
       - fine_tuning=true
-      - samples_for_fine_tuning=250
+      - samples_for_fine_tuning=500
       - PYTHONUNBUFFERED=1
 
   client:
@@ -28,9 +27,17 @@ services:
     environment:
       - attack=increase_false_negatives
       - surrogate_model=embernn
-      - perc_bytes_poisoning=1
-      - training_samples=6000
-      - num_malware_files=200
-      - num_goodware_files=250
+      - perc_bytes_poisoning=3
+      - training_samples=20000
+      - num_malware_files=500
+      - num_goodware_files=500
       - PYTHONUNBUFFERED=1
 
+  labeling_service:
+    image: image-server
+    container_name: labeling_service
+    environment:
+      - classifier=malconv
+      - load_pretrained_model=true
+      - fine_tuning=false
+      - PYTHONUNBUFFERED=1
