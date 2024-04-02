@@ -12,6 +12,7 @@ services:
       - load_pretrained_model=false
       - training_samples=20000
       - fine_tuning=true
+      - continue_training=true
       - samples_for_fine_tuning=500
       - PYTHONUNBUFFERED=1
 

@@ -1,7 +1,6 @@
 import os
 import random
 import numpy as np
-import pandas as pd
 import ember
 import lightgbm as lgb
 from embernn import EmberNN
@@ -11,6 +10,7 @@ import features_utils
 import plotext as plt
 from secml.array import CArray
 from secml_malware.models import CClassifierRemote
+import time
 
 byte_histogram_features = np.array(features_utils.get_byte_histogram_features())
 header_features =  np.array(features_utils.get_header_features())
@@ -101,53 +101,26 @@ print("Ember dataset loading complete.")
 print("shape X_train: ", X_train.shape)
 print("shape y_train: ", y_train.shape) 
 
-watermark_feature_set_size = 8
-
 if surrogate_model == "emberGBDT":
     print("Training emberGBDT (surrogate) model...")
     lgbm_dataset = lgb.Dataset(X_train, y_train)
     model = lgb.train({"application": "binary"}, lgbm_dataset)
     print("emberGBDT (surrogate) model training complete.")
     
-    print("Calculating SHAP values...")
-    contribs_gw = model.predict(X_gw, pred_contrib=True)
     results_gw_pre = model.predict(X_gw)
-    np_contribs_gw = np.array(contribs_gw)
-    shap_values_gw = pd.DataFrame(np_contribs_gw[:,:-1])
-
-    contribs_mw = model.predict(X_mw, pred_contrib=True)
     results_mw_pre = model.predict(X_mw)
-    np_contribs_mw = np.array(contribs_mw)
-    shap_values_mw = pd.DataFrame(np_contribs_mw[:,:-1])
-    
-    summed_mw = shap_values_mw.sum()
-    summed_gw = shap_values_gw.sum()
-    summed = abs(summed_mw) + abs(summed_gw)
-    summed = summed.argsort()
-    
+
 elif surrogate_model == "embernn":
     print("Training emberNN (surrogate) model...")
     model = EmberNN(X_train.shape[1])
     model.fit(X_train, y_train)
     print("emberNN (surrogate) model training complete.")
     
-    print("Calculating SHAP values...")
-    contribs_gw = model.explain(X_exp=X_gw)[0]
-    shap_values_gw = pd.DataFrame(contribs_gw)
     results_gw_pre = model.predict(X_gw)
-
-    contribs_mw = model.explain(X_exp=X_mw)[0]
-    shap_values_mw = pd.DataFrame(contribs_mw)
     results_mw_pre = model.predict(X_mw)
-    
-    summed = abs(shap_values_mw) + abs(shap_values_gw)
-    summed = summed.iloc[:, 0].argsort()
+
 else:
     raise ValueError("Surrogate model not specified or invalid. Please specify 'embernn' or 'emberGBDT' as the surrogate model.")
-
-closest_to_zero = summed[summed.isin(header_features)]
-selected_features = list(closest_to_zero[-watermark_feature_set_size:])
-selected_feature_values = {}
 
 byte_histogram_features_gw = X_gw[:, byte_histogram_features]
 total_histogram_gw = np.sum(byte_histogram_features_gw, axis=0)
@@ -195,47 +168,41 @@ elif attack == "increase_false_positives":
     length_file_to_poison = length_mw
     y_value = 1
     byte_histogram_to_analyze = byte_probability_distribution_gw
-    
-for i in range(len(selected_features)):
-    feature_values = X_to_analyze[:, selected_features[i]]
+
+header_feature_values = {}
+
+print("Poisoning: modifying header...")   
+for i in range(len(header_features)):
+    feature_values = X_to_analyze[:, header_features[i]]
     unique_values, counts = np.unique(feature_values.astype(dtype='int64'), return_counts=True)
     prob_distribution = counts / np.sum(counts)
     extracted_values = np.random.choice(unique_values, size=len(file_path_to_poison), p=prob_distribution)
-    selected_feature_values[selected_features[i]] = extracted_values  
-    
+    header_feature_values[header_features[i]] = extracted_values  
+
 for i in range(len(file_path_to_poison)):
     pe = pefile.PE(file_path_to_poison[i])
-    if 626 in selected_features:
-        pe.FILE_HEADER.TimeDateStamp = selected_feature_values[626][i]
-    if 677 in selected_features:
-        pe.OPTIONAL_HEADER.MajorImageVersion = selected_feature_values[677][i]
-    if 678 in selected_features:
-        pe.OPTIONAL_HEADER.MinorImageVersion = selected_feature_values[678][i]
-    if 679 in selected_features:
-        pe.OPTIONAL_HEADER.MajorLinkerVersion = selected_feature_values[679][i]
-    if 680 in selected_features:
-        pe.OPTIONAL_HEADER.MinorLinkerVersion = selected_feature_values[680][i]
-    if 681 in selected_features:
-        pe.OPTIONAL_HEADER.MajorOperatingSystemVersion = selected_feature_values[681][i]
-    if 682 in selected_features:
-        pe.OPTIONAL_HEADER.MinorOperatingSystemVersion = selected_feature_values[682][i]
-    if 683 in selected_features:
-        pe.OPTIONAL_HEADER.MajorSubsystemVersion = selected_feature_values[683][i]
-    if 684 in selected_features:
-        pe.OPTIONAL_HEADER.MinorSubsystemVersion = selected_feature_values[684][i]
-    if 685 in selected_features:
-        pe.OPTIONAL_HEADER.SizeOfCode = selected_feature_values[685][i]
-    if 686 in selected_features:
-        pe.OPTIONAL_HEADER.SizeOfHeaders = selected_feature_values[686][i]
-    if 687 in selected_features:
-        pe.OPTIONAL_HEADER.SizeOfHeapCommit = selected_feature_values[687][i]
+
+    pe.FILE_HEADER.TimeDateStamp = header_feature_values[626][i]
+    pe.OPTIONAL_HEADER.MajorImageVersion = header_feature_values[677][i]
+    pe.OPTIONAL_HEADER.MinorImageVersion = header_feature_values[678][i]
+    pe.OPTIONAL_HEADER.MajorLinkerVersion = header_feature_values[679][i]
+    pe.OPTIONAL_HEADER.MinorLinkerVersion = header_feature_values[680][i]
+    pe.OPTIONAL_HEADER.MajorOperatingSystemVersion = header_feature_values[681][i]
+    pe.OPTIONAL_HEADER.MinorOperatingSystemVersion = header_feature_values[682][i]
+    pe.OPTIONAL_HEADER.MajorSubsystemVersion = header_feature_values[683][i]
+    pe.OPTIONAL_HEADER.MinorSubsystemVersion = header_feature_values[684][i]
+    pe.OPTIONAL_HEADER.SizeOfCode = header_feature_values[685][i]
+    pe.OPTIONAL_HEADER.SizeOfHeaders = header_feature_values[686][i]
+    pe.OPTIONAL_HEADER.SizeOfHeapCommit = header_feature_values[687][i]
 
     file_path = poisoned_folder + str(i) + ".file"
     pe.write(file_path)    
+print("Header modification completed.")
 
 X_poisoned = []
 y_poisoned = []
 
+print("Poisoning: modifying byte distribution...")
 i = 0
 for file_name in os.listdir(poisoned_folder):
     file_path = os.path.join(poisoned_folder, file_name)
@@ -258,6 +225,7 @@ y_poisoned = np.array(y_poisoned)
 byte_histogram_features_poisoned = X_poisoned[:, byte_histogram_features]
 total_histogram_poisoned = np.sum(byte_histogram_features_poisoned, axis=0)
 byte_probability_distribution_poisoned = total_histogram_poisoned / np.sum(total_histogram_poisoned)
+print("Byte distribution modification completed.")
 
 if attack == "increase_false_negatives":
     plt.clf()
@@ -322,6 +290,7 @@ for file_name in os.listdir(poisoned_folder):
     print(f'predicted label: {y_pred}')
     print(f'confidence: {score}')
     print('-' * 20)
+time.sleep(250)
 
 print("\nAttack Phase\n")
 

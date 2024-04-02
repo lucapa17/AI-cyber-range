@@ -17,13 +17,15 @@ files = []
 X_train = None
 y_train = None
 next_fine_tuning = 0
-i = 0
+count = 0
+model_version = 0
 
 classifier = os.getenv("classifier")
 labeling_service = os.getenv("labeling_service")
 apiKeys = os.getenv("apiKeys")
 training_samples = os.getenv("training_samples")
 fine_tuning = os.getenv("fine_tuning", "false").lower() == "true"
+continue_training = os.getenv("continue_training", "false").lower() == "true"
 samples_for_fine_tuning = os.getenv("samples_for_fine_tuning")
 load_pretrained_model = os.getenv("load_pretrained_model", "true").lower() == "true"
 
@@ -71,12 +73,13 @@ elif classifier == "emberGBDT":
         net = CClassifierEmber(X=X_train, y=y_train)
         net = CEmberWrapperPhi(net)
         print("Ember GBDT model loading complete.")
+        net.classifier.save_model(f"emberGBDT_model{model_version}.txt")
 else:
     raise ValueError("Classifier not specified or invalid. Please specify 'malconv' or 'emberGBDT' as the classifier.")
 
 @app.post('/analyze')
 async def analyze(request: Request):
-    global i, X_train, y_train, next_fine_tuning
+    global count, X_train, y_train, next_fine_tuning
     
     data = await request.body()
     fp = request.headers.get("Filename")
@@ -85,8 +88,8 @@ async def analyze(request: Request):
     convertedData = CArray(bytes2CArr).atleast_2d()
     # model initializtion
     _, confidence = net.predict(convertedData, True)
-    i+=1
-    print(f"> Request number: {i}")
+    count+=1
+    print(f"> Request number: {count}")
     print(f"> The file named: {fp} is a malware with confidence {confidence[0, 1].item()}")
     conf = confidence[1][0].item()
        
@@ -109,7 +112,7 @@ async def analyze(request: Request):
 
 async def process_fine_tuning():
     print("Fine tuning in progress...")
-    global X_train, y_train, next_fine_tuning
+    global X_train, y_train, next_fine_tuning, model_version
     X = []
     for file in files:
         X.append(np.squeeze(net.extract_features(file).tondarray()))
@@ -119,10 +122,17 @@ async def process_fine_tuning():
 
     X_train = np.concatenate((X_train, X), axis=0)
     y_train = np.concatenate((y_train, y), axis=0)
-    net.classifier._fit(X_train, y_train)
+    if continue_training:
+        print("Continuing training...")
+        net.classifier._fit(X=X_train, y=y_train, init_model=f"emberGBDT_model{model_version}.txt")
+    else:
+        print("Training from scratch...")
+        net.classifier._fit(X=X_train, y=y_train)
 
     files.clear()
     print("Fine tuning completed.")
+    model_version+=1
+    net.classifier.save_model(f"emberGBDT_model{model_version}.txt")
     one_day_in_seconds = 24 * 60 * 60
     current_time = time.time()
     next_fine_tuning = current_time + one_day_in_seconds
