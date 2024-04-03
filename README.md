@@ -5,6 +5,11 @@ This repository contains Dockerfiles and Docker Compose configuration for creati
 
 Make sure you have Docker installed on your system. If not, you can download and install Docker from [Docker's official website](https://www.docker.com/get-started).
 
+You also need to download the Ember dataset and extract its features as indicated in the [Ember GitHub repository](https://github.com/elastic/ember). You can automate these operations by running the following command:
+```bash
+python download_extract_ember_dataset.py
+```
+This script will download the dataset and extract its features into the `data` folder automatically.
 ## Build and Run Instructions
 
 ### Building the Images
