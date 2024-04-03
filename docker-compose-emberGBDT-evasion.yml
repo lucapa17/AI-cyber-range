@@ -11,6 +11,8 @@ services:
       - load_pretrained_model=true
       - fine_tuning=false
       - PYTHONUNBUFFERED=1
+    volumes:
+      - "./data/ember2018:/app/ember2018"
 
   client:
     image: image-client-evasion

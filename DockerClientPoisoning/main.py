@@ -12,6 +12,8 @@ from secml.array import CArray
 from secml_malware.models import CClassifierRemote
 import time
 
+time.sleep(100)
+
 byte_histogram_features = np.array(features_utils.get_byte_histogram_features())
 header_features =  np.array(features_utils.get_header_features())
 

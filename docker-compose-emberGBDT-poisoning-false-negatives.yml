@@ -6,6 +6,8 @@ services:
     container_name: server
     ports:
       - "8000:8000"
+    volumes:
+      - "./data/ember2018:/app/ember2018"
     environment:
       - classifier=emberGBDT
       - labeling_service=http://labeling_service:8000/analyze
@@ -23,6 +25,7 @@ services:
       - "./data/goodware_samples:/app/goodware_samples"
       - "./data/malware_samples:/app/malware_samples"
       - "./query/evasion-remote-classifier:/app/query"
+      - "./data/ember2018:/app/ember2018"
     depends_on:
       - server
     environment:
