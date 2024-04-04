@@ -11,8 +11,17 @@ import plotext as plt
 from secml.array import CArray
 from secml_malware.models import CClassifierRemote
 import time
+import requests
 
-time.sleep(100)
+def check_server_availability(url):
+    try:
+        requests.get(url) 
+    except requests.ConnectionError:
+        return False
+    return True
+
+while not check_server_availability("http://server:8000"):
+    time.sleep(5)
 
 byte_histogram_features = np.array(features_utils.get_byte_histogram_features())
 header_features =  np.array(features_utils.get_header_features())
