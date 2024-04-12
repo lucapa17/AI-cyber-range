@@ -285,6 +285,7 @@ if surrogate_model == "emberGBDT":
     print("emberGBDT (surrogate) model retraining complete.")
 elif surrogate_model == "embernn":
     print("Retraining emberNN (surrogate) model...")
+    model = EmberNN(X_train.shape[1])
     model.fit(X_train_poisoned, y_train_poisoned)
     print("emberNN (surrogate) model retraining complete.")
 
