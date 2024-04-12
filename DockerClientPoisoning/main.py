@@ -280,23 +280,31 @@ y_train_poisoned = np.concatenate((y_train, y_poisoned), axis=0)
 
 if surrogate_model == "emberGBDT":
     print("Retraining emberGBDT (surrogate) model...")
-    lgbm_dataset = lgb.Dataset(X_train_poisoned, y_train_poisoned)
-    model = lgb.train({"application": "binary"}, lgbm_dataset)
-    print("emberGBDT (surrogate) model retraining complete.")
+    model = CClassifierEmber(X=X_train, y=y_train)
+    print("emberGBDT (surrogate) model training complete.")
+    if attack == "increase_false_negatives":
+        _, results_mw_pre = model.predict(X_mw, True)
+        results_mw_pre = results_mw_pre.tondarray()[:, 1]
+    else:
+        _, results_gw_pre = model.predict(X_gw, True)
+        results_gw_pre = results_gw_pre.tondarray()[:, 1]
+
 elif surrogate_model == "embernn":
     print("Retraining emberNN (surrogate) model...")
     model = EmberNN(X_train.shape[1])
     model.fit(X_train_poisoned, y_train_poisoned)
     print("emberNN (surrogate) model retraining complete.")
+    if attack == "increase_false_negatives":
+        results_mw_post = model.predict(X_mw)
+    else:
+        results_gw_post = model.predict(X_gw)
 
 if attack == "increase_false_negatives":
-    results_mw_post = model.predict(X_mw)
     print(f'number of false negatives before the attack (SURROGATE MODEL): {len(results_mw_pre[results_mw_pre < 0.5])} / {len(results_mw_pre)}')
     print(f'number of false negatives after the attack (SURROGATE MODEL): {len(results_mw_post[results_mw_post < 0.5])} / {len(results_mw_pre)}')
     print(f'Average confidence level of Malwares before the attack (SURROGATE MODEL): {np.sum(results_mw_pre)/len(results_mw_pre)}')
     print(f'Average confidence level of Malwares after the attack (SURROGATE MODEL): {np.sum(results_mw_post)/len(results_mw_post)}\n')
 else:
-    results_gw_post = model.predict(X_gw)
     print(f'number of false positives before the attack (SURROGATE MODEL): {len(results_gw_pre[results_gw_pre > 0.5])}')
     print(f'number of false positives after the attack (SURROGATE MODEL): {len(results_gw_post[results_gw_post > 0.5])}')
     print(f'Average confidence level of Goodwares before the attack (SURROGATE MODEL): {np.sum(results_gw_pre)/len(results_gw_pre) / {len(results_gw_pre)}}')
