@@ -32,10 +32,10 @@ services:
     environment:
       - attack=increase_false_negatives
       - surrogate_model=embernn
-      - perc_bytes_poisoning=3
+      - perc_bytes_poisoning=1.5
       - training_samples=20000
-      - num_malware_files=500
-      - num_goodware_files=500
+      - num_malware_files=200
+      - num_goodware_files=1000
       - PYTHONUNBUFFERED=1
 
   labeling_service:
