@@ -16,7 +16,7 @@ services:
       - test_samples=20000
       - fine_tuning=true
       - continue_training=true
-      - samples_for_fine_tuning=500
+      - samples_for_fine_tuning=1000
       - PYTHONUNBUFFERED=1
 
   client:
@@ -34,7 +34,7 @@ services:
       - surrogate_model=embernn
       - perc_bytes_poisoning=1.5
       - training_samples=20000
-      - num_malware_files=200
+      - num_malware_files=500
       - num_goodware_files=1000
       - PYTHONUNBUFFERED=1
 
