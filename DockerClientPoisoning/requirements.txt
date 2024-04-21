@@ -8,6 +8,5 @@ vt-py
 colorama
 lightgbm==3.3.5
 git+https://github.com/zangobot/ember
-shap
 pefile
 plotext

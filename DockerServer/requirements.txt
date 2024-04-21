@@ -8,3 +8,4 @@ python-magic
 vt-py
 lightgbm==3.3.5
 git+https://github.com/zangobot/ember
+shap

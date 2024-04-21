@@ -14,7 +14,7 @@ services:
       - apiKeys=apikey1,apikey2,apikey3
       - load_pretrained_model=false
       - training_samples=6000
-      - test_samples=6000
+      - validation_samples=6000
       - fine_tuning=true
       - samples_for_fine_tuning=250
       - PYTHONUNBUFFERED=1
@@ -25,15 +25,11 @@ services:
     volumes:
       - "./data/goodware_samples:/app/goodware_samples"
       - "./data/malware_samples:/app/malware_samples"
-      - "./query/evasion-remote-classifier:/app/query"
-      - "./data/ember2018:/app/ember2018"
     depends_on:
       - server
     environment:
       - attack=increase_false_positives
-      - surrogate_model=embernn
       - perc_bytes_poisoning=1
-      - training_samples=6000
       - num_malware_files=250
       - num_goodware_files=250
       - PYTHONUNBUFFERED=1

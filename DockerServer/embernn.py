@@ -70,12 +70,9 @@ class EmberNN(nn.Module):
         return self.exp.shap_values(X_exp_normalized)
 
     def save(self, save_path, file_name='ember_nn'):
-        # Save the trained scaler so that it can be reused at test time
         joblib.dump(self.normal, os.path.join(save_path, file_name + '_scaler.pkl'))
         torch.save(self.state_dict(), os.path.join(save_path, file_name + '.pt'))
 
     def load(self, save_path, file_name):
-        # Load the trained scaler
         self.normal = joblib.load(os.path.join(save_path, file_name + '_scaler.pkl'))
-
         self.load_state_dict(torch.load(os.path.join(save_path, file_name + '.pt')))

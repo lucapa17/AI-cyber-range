@@ -2,9 +2,6 @@ import os
 import random
 import numpy as np
 import ember
-import lightgbm as lgb
-from embernn import EmberNN
-from secml_malware.models import CClassifierEmber
 import math
 import pefile
 import features_utils
@@ -27,12 +24,10 @@ while not check_server_availability("http://server:8000"):
 byte_histogram_features = np.array(features_utils.get_byte_histogram_features())
 header_features =  np.array(features_utils.get_header_features())
 
-surrogate_model = os.getenv("surrogate_model")
 attack = os.getenv("attack")
 perc_bytes_poisoning = os.getenv("perc_bytes_poisoning")
 num_malware_files = os.getenv("num_malware_files")
 num_goodware_files = os.getenv("num_goodware_files")
-training_samples = os.getenv("training_samples")
 
 if attack != "increase_false_negatives" and attack != "increase_false_positives":
     raise ValueError("Unrecognized attack. Attack strategy must be either 'increase_false_negatives' or 'increase_false_positives'")
@@ -104,54 +99,6 @@ y_gw = np.array(y_gw)
 y_mw = np.array(y_mw)
 print("shape X_gw: ", X_gw.shape)
 print("shape X_mw: ", X_mw.shape) 
-
-print("Loading Ember dataset...")
-if int(training_samples) > 200000:
-    subset = "train"
-else:
-    subset = "test"
-X_train, y_train = ember.read_vectorized_features(
-    "ember2018/",
-    subset=subset,
-    feature_version=2
-)
-X_train = X_train[y_train != -1].astype(dtype='float64')
-y_train = y_train[y_train != -1]
-
-random_indices = np.random.choice(len(X_train), int(training_samples), replace=False)
-
-X_train = X_train[random_indices]
-y_train = y_train[random_indices]
-
-print("Ember dataset loading complete.")
-print("shape X_train: ", X_train.shape)
-print("shape y_train: ", y_train.shape) 
-
-if surrogate_model == "emberGBDT":
-    print("Training emberGBDT (surrogate) model...")
-    model = CClassifierEmber(X=X_train, y=y_train)
-    print("emberGBDT (surrogate) model training complete.")
-    
-    if attack == "increase_false_negatives":
-        _, results_mw_pre = model.predict(X_mw, True)
-        results_mw_pre = results_mw_pre.tondarray()[:, 1]
-    else:
-        _, results_gw_pre = model.predict(X_gw, True)
-        results_gw_pre = results_gw_pre.tondarray()[:, 1]
-
-elif surrogate_model == "embernn":
-    print("Training emberNN (surrogate) model...")
-    model = EmberNN(X_train.shape[1])
-    model.fit(X_train, y_train)
-    print("emberNN (surrogate) model training complete.")
-    
-    if attack == "increase_false_negatives":
-        results_mw_pre = model.predict(X_mw)
-    else:
-        results_gw_pre = model.predict(X_gw)
-    
-else:
-    raise ValueError("Surrogate model not specified or invalid. Please specify 'embernn' or 'emberGBDT' as the surrogate model.")
 
 byte_histogram_features_gw = X_gw[:, byte_histogram_features]
 total_histogram_gw = np.sum(byte_histogram_features_gw, axis=0)
@@ -274,41 +221,6 @@ elif attack == "increase_false_positives":
     plt.xfrequency(10)
     plt.grid(horizontal=True)
     plt.show()
-
-X_train_poisoned = np.concatenate((X_train, X_poisoned), axis=0)
-y_train_poisoned = np.concatenate((y_train, y_poisoned), axis=0)
-
-if surrogate_model == "emberGBDT":
-    print("Retraining emberGBDT (surrogate) model...")
-    model = CClassifierEmber(X=X_train, y=y_train)
-    print("emberGBDT (surrogate) model training complete.")
-    if attack == "increase_false_negatives":
-        _, results_mw_pre = model.predict(X_mw, True)
-        results_mw_pre = results_mw_pre.tondarray()[:, 1]
-    else:
-        _, results_gw_pre = model.predict(X_gw, True)
-        results_gw_pre = results_gw_pre.tondarray()[:, 1]
-
-elif surrogate_model == "embernn":
-    print("Retraining emberNN (surrogate) model...")
-    model = EmberNN(X_train.shape[1])
-    model.fit(X_train_poisoned, y_train_poisoned)
-    print("emberNN (surrogate) model retraining complete.")
-    if attack == "increase_false_negatives":
-        results_mw_post = model.predict(X_mw)
-    else:
-        results_gw_post = model.predict(X_gw)
-
-if attack == "increase_false_negatives":
-    print(f'number of false negatives before the attack (SURROGATE MODEL): {len(results_mw_pre[results_mw_pre < 0.5])} / {len(results_mw_pre)}')
-    print(f'number of false negatives after the attack (SURROGATE MODEL): {len(results_mw_post[results_mw_post < 0.5])} / {len(results_mw_pre)}')
-    print(f'Average confidence level of Malwares before the attack (SURROGATE MODEL): {np.sum(results_mw_pre)/len(results_mw_pre)}')
-    print(f'Average confidence level of Malwares after the attack (SURROGATE MODEL): {np.sum(results_mw_post)/len(results_mw_post)}\n')
-else:
-    print(f'number of false positives before the attack (SURROGATE MODEL): {len(results_gw_pre[results_gw_pre > 0.5])}')
-    print(f'number of false positives after the attack (SURROGATE MODEL): {len(results_gw_post[results_gw_post > 0.5])}')
-    print(f'Average confidence level of Goodwares before the attack (SURROGATE MODEL): {np.sum(results_gw_pre)/len(results_gw_pre) / {len(results_gw_pre)}}')
-    print(f'Average confidence level of Goodwares after the attack (SURROGATE MODEL): {np.sum(results_gw_post)/len(results_gw_post) / {len(results_gw_pre)}}')
 
 print("\nBeginning of Attack\n")
     

@@ -13,7 +13,7 @@ services:
       - labeling_service=http://labeling_service:8000/analyze
       - load_pretrained_model=false
       - training_samples=20000
-      - test_samples=20000
+      - validation_samples=20000
       - fine_tuning=true
       - continue_training=true
       - samples_for_fine_tuning=1000
@@ -25,15 +25,11 @@ services:
     volumes:
       - "./data/goodware_samples:/app/goodware_samples"
       - "./data/malware_samples:/app/malware_samples"
-      - "./query/evasion-remote-classifier:/app/query"
-      - "./data/ember2018:/app/ember2018"
     depends_on:
       - server
     environment:
       - attack=increase_false_negatives
-      - surrogate_model=embernn
-      - perc_bytes_poisoning=1.5
-      - training_samples=20000
+      - perc_bytes_poisoning=1
       - num_malware_files=500
       - num_goodware_files=1000
       - PYTHONUNBUFFERED=1
