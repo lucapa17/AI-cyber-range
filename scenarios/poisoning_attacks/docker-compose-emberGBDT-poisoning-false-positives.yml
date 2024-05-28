@@ -6,8 +6,6 @@ services:
     container_name: server
     ports:
       - "8000:8000"
-    volumes:
-      - "./data/ember2018:/app/ember2018"
     environment:
       - classifier=emberGBDT
       - labeling_service=metadefender
