@@ -5,6 +5,6 @@ services:
     image: image-client-evasion
     container_name: client
     volumes:
-      - "./data/goodware_samples:/app/goodware_samples"
-      - "./data/malware_samples:/app/malware_samples"
+      - "../../data/goodware_samples:/app/goodware_samples"
+      - "../../data/malware_samples:/app/malware_samples"
       - "./query/evasion-virustotal:/app/query"

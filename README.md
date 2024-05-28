@@ -31,7 +31,7 @@ After building the images or pulling them from Docker Hub, you can run the conta
 
 - ### Evasion attacks
   Evasion attacks within the following scenarios are based on the black-box attack framework named GAMMA (Genetic Adversarial Machine Learning Malware Attack), as described in the article [Functionality-preserving Black-box Optimization of Adversarial Windows Malware](https://arxiv.org/abs/2003.13526), specifically using the section injection manipulation.
-  If you wish to modify the attacks and use different strategies and parameters, you can modify the contents of the `query` folder.
+  If you wish to modify the attacks and use different strategies and parameters, you can modify the contents of the `scenarios/evasion_attacks/query` folder.
   - #### Scenario 1: Evasion Attack against Malconv hosted on a Server
     ```bash
     docker compose -f scenarios/evasion_attacks/docker-compose-malconv-evasion.yml up
@@ -44,12 +44,12 @@ After building the images or pulling them from Docker Hub, you can run the conta
     ```bash
     docker compose -f scenarios/evasion_attacks/docker-compose-virustotal-evasion.yml up
     ```
-    For Scenario 3, make sure to modify the queries in the `query/evasion-virustotal` folder, specifying your own API key for VirusTotal.
+    For Scenario 3, make sure to modify the queries in the `scenarios/evasion_attacks/query/evasion-virustotal` folder, specifying your own API key for VirusTotal.
   - #### Scenario 4: Evasion Attack against MetaDefender
     ```bash
     docker compose -f scenarios/evasion_attacks/docker-compose-metadefender-evasion.yml up
     ```
-    For Scenario 4, make sure to modify the queries in the `query/evasion-metadefender` folder, specifying your own API key for MetaDefender.
+    For Scenario 4, make sure to modify the queries in the `scenarios/evasion_attacks/query/evasion-metadefender` folder, specifying your own API key for MetaDefender.
 - ### Poisoning attacks
   The following scenarios represent poisoning attacks initiated by a client against the server. In these scenarios, the client modifies either goodware or malware samples before sending them to the server . The server sends the newly collected samples to an external antivirus service for proper labeling and then fine-tunes its anti-malware detection model. Subsequently, the client sends new samples without any modifications. The client's objective is to increase the number of false positives or false negatives after the poisoning. To adjust the parameters for the scenarios, please modify the environment variables in the Docker Compose files.
   - #### Scenario 1: Poisoning Attack against against EMBER GBDT hosted on a Server to increase false negative rates
