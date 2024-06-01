@@ -16,6 +16,7 @@ from sklearn.metrics import roc_curve
 
 app = FastAPI()
 
+# global variables
 files = []
 hash_list = []
 X_train = None
@@ -37,8 +38,6 @@ continue_training = os.getenv("continue_training", "false").lower() == "true"
 samples_for_fine_tuning = os.getenv("samples_for_fine_tuning")
 load_pretrained_model = os.getenv("load_pretrained_model", "true").lower() == "true"
 
-
-
 print(f"Classfier passed: {classifier}")
 
 net = None
@@ -57,64 +56,97 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         print("Ember GBDT pretrained model loading complete.")
     else: 
         print("Loading Ember dataset..")
-        if int(training_samples) + int(validation_samples) > 200000:
-            subset = "train"
-            file_paths = [
-                "ember2018/train_features0.jsonl",
-                "ember2018/train_features1.jsonl",
-                "ember2018/train_features2.jsonl",
-                "ember2018/train_features3.jsonl",
-                "ember2018/train_features4.jsonl",
-                "ember2018/train_features5.jsonl"
-            ]
-        else:
-            subset = "test"
-            file_paths = ["ember2018/test_features.jsonl"]
+        
+        file_paths_train = [
+            "ember2018/train_features_0.jsonl",
+            "ember2018/train_features_1.jsonl",
+            "ember2018/train_features_2.jsonl",
+            "ember2018/train_features_3.jsonl",
+            "ember2018/train_features_4.jsonl",
+            "ember2018/train_features_5.jsonl"
+        ]
+        file_paths_validation = ["ember2018/test_features.jsonl"]
+        hash_list_train = []
+        hash_list_validation = []
 
-        X, y = ember.read_vectorized_features(
-            "ember2018/",
-            subset=subset,
+        for file_paths, hash_list in zip([file_paths_train, file_paths_validation], [hash_list_train, hash_list_validation]):
+            for file_path in file_paths:
+                with open(file_path, 'r') as file:
+                    for line in file:
+                        sample = json.loads(line.strip())
+                        hash_value = sample.get("sha256", None)
+                        if hash_value:
+                            hash_entry = {
+                                "sha256": hash_value
+                            }
+                            hash_list.append(hash_entry)
+                
+        hash_list_train = np.array(hash_list_train)
+        hash_list_validation = np.array(hash_list_validation)
+        
+        X_train, y_train = ember.read_vectorized_features(
+            "ember2018",
+            subset="train",
             feature_version=2
         )
-        for file_path in file_paths:
-            with open(file_path, 'r') as file:
-                for line in file:
-                    sample = json.loads(line.strip())
-                    hash_value = sample.get("sha256", None)
-                    if hash_value:
-                        hash_entry = {
-                            "sha256": hash_value
-                        }
-                        hash_list.append(hash_entry)
-                        
-        hash_list = np.array(hash_list)
-        hash_list = hash_list[y != -1]
-        X = X[y != -1].astype(dtype='float64')
-        y = y[y != -1]
-        
-        random_indices = np.random.choice(len(X), int(training_samples) + int(validation_samples), replace=False)
-        
-        train_indices = random_indices[:int(training_samples)]
-        validation_indices = random_indices[int(training_samples):]
 
-        X_train = X[train_indices]
-        y_train = y[train_indices]
-        hash_list = hash_list[train_indices]
+        X_train_gw = X_train[y_train == 0].astype(dtype='float64')
+        y_train_gw = y_train[y_train == 0]
+        X_train_mw = X_train[y_train == 1].astype(dtype='float64')
+        y_train_mw = y_train[y_train == 1]
 
-        X_validation = X[validation_indices]
-        y_validation = y[validation_indices]
+        hash_list_train_gw = hash_list_train[y_train == 0]
+        hash_list_train_mw = hash_list_train[y_train == 1]
+
+        np.random.seed(42)
+
+        all_indices_train = np.arange(len(X_train_gw))
+        np.random.shuffle(all_indices_train)
+        indices_train = all_indices_train[:int(int(training_samples)/2)]
+
+        X_train = np.concatenate((X_train_gw[indices_train], X_train_mw[indices_train]), axis=0)
+        y_train = np.concatenate((y_train_gw[indices_train], y_train_mw[indices_train]), axis=0)
+
+        del X_train_gw, X_train_mw, y_train_gw, y_train_mw
+
+        X_validation, y_validation = ember.read_vectorized_features(
+            "ember2018",
+            subset="test",
+            feature_version=2
+        )
+
+        X_validation_gw = X_validation[y_validation == 0].astype(dtype='float64')
+        y_validation_gw = y_validation[y_validation == 0]
+        X_validation_mw = X_validation[y_validation == 1].astype(dtype='float64')
+        y_validation_mw = y_validation[y_validation == 1]
+
+        hash_list_validation_gw = hash_list_validation[y_validation == 0]
+        hash_list_validation_mw = hash_list_validation[y_validation == 1]
+
+        all_indices_validation = np.arange(len(X_validation_gw))
+        np.random.shuffle(all_indices_validation)
+        indices_validation = all_indices_validation[:int(int(validation_samples)/2)]
+
+        X_validation = np.concatenate((X_validation_gw[indices_validation], X_validation_mw[indices_validation]), axis=0)
+        y_validation = np.concatenate((y_validation_gw[indices_validation], y_validation_mw[indices_validation]), axis=0)
+        
+        del X_validation_gw, X_validation_mw, y_validation_gw, y_validation_mw
+        
+        hash_list = np.concatenate((hash_list_train_gw[indices_train],
+                                    hash_list_train_mw[indices_train],
+                                    hash_list_validation_gw[indices_validation],
+                                    hash_list_validation_mw[indices_validation]), axis=0)
+        
+        del hash_list_train_gw, hash_list_train_mw, hash_list_validation_gw, hash_list_validation_mw
 
         print("Ember dataset loading complete.")
         print("shape X_train: ", X_train.shape)
         print("shape y_train: ", y_train.shape)
         print("shape X_validation: ", X_validation.shape)
         print("shape y_validation: ", y_validation.shape)
+        print("shape hash_list: ", hash_list.shape)
         
-        del X
-        del y
-
         hash_list = list(hash_list)  
-        
         
         if classifier == "emberGBDT":
             print("Loading Ember GBDT model...")
@@ -147,13 +179,92 @@ elif classifier == "emberGBDT" or classifier == "embernn":
             print("Ember NN model loading complete.")
 
         if not fine_tuning:
-            del X_train
-            del y_train
-            del X_validation
-            del y_validation
-            
+            del X_train, y_train, X_validation, y_validation         
 else:
     raise ValueError("Classifier not specified or invalid. Please specify 'malconv' or 'emberGBDT' or 'embernn' as the classifier.")
+
+
+def label_data(files):
+    if isValidUrl(labeling_service):
+        remote_classifier = CClassifierRemote(url=labeling_service)
+    else:
+        remote_classifier = CClassifierRemote(antivirus=labeling_service, apiKey=apiKeys.split(","))
+    print("antivirus labeling service", labeling_service)
+    print("Labeling files...")
+    y_new = []
+    for file in files:
+        pred, confidence = remote_classifier.predict(CArray(np.frombuffer(file, dtype=np.uint8)).atleast_2d(), return_decision_function=True)
+        print(f"Prediction: {'malware' if pred.item() == 1 else 'goodware'}. Score: {confidence[0, 1].item()}")
+        y_new.append(pred.item())
+    print("Labeling complete.")
+    return y_new
+
+
+async def process_fine_tuning():
+    print("Fine tuning in progress...")
+    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net
+    X = []
+    extractor = ember.PEFeatureExtractor(feature_version=2)
+    for file in files:
+        X.append(extractor.feature_vector(file).astype(dtype='float64'))
+    y = label_data(files)
+    X = np.array(X)
+    y = np.array(y)
+
+    X_train = np.concatenate((X_train, X), axis=0)
+    y_train = np.concatenate((y_train, y), axis=0)
+    if continue_training:
+        print("Continuing training...")
+        if classifier == "emberGBDT":
+            net.classifier._fit(X=X_train, y=y_train, init_model=f"emberGBDT_model{model_version}.txt")
+        elif classifier == "embernn":
+            net.fit(X_train, y_train)
+    else:
+        print("Training from scratch...")
+        if classifier == "emberGBDT":
+            net.classifier._fit(X=X_train, y=y_train)
+        elif classifier == "embernn":
+            net = EmberNN(X_train.shape[1])
+            net.fit(X_train, y_train)
+
+    files.clear()
+    for entry in hash_list:
+        if 'prediction' in entry:
+            del entry['prediction']
+        if 'confidence' in entry:
+            del entry['confidence']
+    print("Fine tuning completed.")
+    
+    print("Calculating new ROC curve to determine model threshold (1% FP on the validation set)...")
+
+    if classifier == "emberGBDT":
+        _, conf = net.classifier.predict(CArray(X_validation), True)
+        conf = conf.tondarray()[:, 1] 
+    elif classifier == "embernn":
+        conf = net.predict(X_validation)
+        
+    fpr, _, thresholds = roc_curve(y_validation, conf)
+
+    # Define the target false positive rate (1%)
+    target_fp_rate = 0.01
+    fp_index = np.argmax(fpr > target_fp_rate)
+    selected_threshold = thresholds[fp_index]
+
+    print("ROC curve calculation completed.")
+    print(f"Selected threshold at {target_fp_rate*100:.2f}% false positive rate: {selected_threshold}")
+
+    model_version+=1
+    if classifier == "emberGBDT":
+        net.classifier.set_threshold(selected_threshold)
+        net.classifier.save_model(f"emberGBDT_model{model_version}.txt")
+    elif classifier == "embernn":
+        net.save(save_path="", file_name=f"ember_nn{model_version}")
+   
+    one_day_in_seconds = 24 * 60 * 60
+    current_time = time.time()
+    next_fine_tuning = current_time + one_day_in_seconds
+    print("Next fine-tuning: ", datetime.datetime.fromtimestamp(next_fine_tuning).strftime('%Y-%m-%d %H:%M:%S'))
+
 
 @app.post('/analyze')
 async def analyze(request: Request):
@@ -229,84 +340,3 @@ async def analyze(request: Request):
         "score": confidence
     }
     return response
-
-async def process_fine_tuning():
-    print("Fine tuning in progress...")
-    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net
-    X = []
-    extractor = ember.PEFeatureExtractor(feature_version=2)
-    for file in files:
-        X.append(extractor.feature_vector(file).astype(dtype='float64'))
-    y = label_data(files)
-    X = np.array(X)
-    y = np.array(y)
-
-    X_train = np.concatenate((X_train, X), axis=0)
-    y_train = np.concatenate((y_train, y), axis=0)
-    if continue_training:
-        print("Continuing training...")
-        if classifier == "emberGBDT":
-            net.classifier._fit(X=X_train, y=y_train, init_model=f"emberGBDT_model{model_version}.txt")
-        elif classifier == "embernn":
-            net.fit(X_train, y_train)
-    else:
-        print("Training from scratch...")
-        if classifier == "emberGBDT":
-            net.classifier._fit(X=X_train, y=y_train)
-        elif classifier == "embernn":
-            net = EmberNN(X_train.shape[1])
-            net.fit(X_train, y_train)
-
-    files.clear()
-    for entry in hash_list:
-        if 'prediction' in entry:
-            del entry['prediction']
-        if 'confidence' in entry:
-            del entry['confidence']
-    print("Fine tuning completed.")
-    
-    print("Calculating new ROC curve to determine model threshold (1% FP on the validation set)...")
-
-    if classifier == "emberGBDT":
-        _, conf = net.classifier.predict(CArray(X_validation), True)
-        conf = conf.tondarray()[:, 1] 
-    elif classifier == "embernn":
-        conf = net.predict(X_validation)
-        
-    fpr, tpr, thresholds = roc_curve(y_validation, conf)
-
-    # Define the target false positive rate (1%)
-    target_fp_rate = 0.01
-    fp_index = np.argmax(fpr > target_fp_rate)
-    selected_threshold = thresholds[fp_index]
-
-    print("ROC curve calculation completed.")
-    print(f"Selected threshold at {target_fp_rate*100:.2f}% false positive rate: {selected_threshold}")
-
-    model_version+=1
-    if classifier == "emberGBDT":
-        net.classifier.set_threshold(selected_threshold)
-        net.classifier.save_model(f"emberGBDT_model{model_version}.txt")
-    elif classifier == "embernn":
-        net.save(save_path="", file_name=f"ember_nn{model_version}")
-
-        
-    one_day_in_seconds = 24 * 60 * 60
-    current_time = time.time()
-    next_fine_tuning = current_time + one_day_in_seconds
-    print("Next fine-tuning: ", datetime.datetime.fromtimestamp(next_fine_tuning).strftime('%Y-%m-%d %H:%M:%S'))
-
-def label_data(files):
-    if isValidUrl(labeling_service):
-        remote_classifier = CClassifierRemote(url=labeling_service)
-    else:
-        remote_classifier = CClassifierRemote(antivirus=labeling_service, apiKey=apiKeys.split(","))
-    print("antivirus labeling service", labeling_service)
-    print("Labeling files...")
-    y_new = []
-    for file in files:
-        pred, confidence = remote_classifier.predict(CArray(np.frombuffer(file, dtype=np.uint8)).atleast_2d(), return_decision_function=True)
-        print(f"Prediction: {'malware' if pred.item() == 1 else 'goodware'}. Score: {confidence[0, 1].item()}")
-        y_new.append(pred.item())
-    print("Labeling complete.")
-    return y_new

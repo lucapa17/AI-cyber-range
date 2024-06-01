@@ -9,9 +9,9 @@ ENV PYTHON_VERSION=3.9
 RUN cmake -S /app/lief -B /app/lief/build -DPYTHON_VERSION=3.9 \
     && cmake --build /app/lief/build --target pyLIEF \
     && pip install /app/lief/build/api/python
-COPY main.py .
-COPY embernn.py .
 COPY download_extract_ember_dataset.py .
 RUN python download_extract_ember_dataset.py
+COPY main.py .
+COPY embernn.py .
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
