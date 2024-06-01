@@ -1,24 +1,5 @@
 NUM_EMBER_FEATURES = 2381
-infeasible_features = [
-    'avlength',
-    'exports',
-    'has_debug',
-    'has_relocations',
-    'has_resources',
-    'has_signature',
-    'has_tls',
-    'imports',
-    'major_subsystem_version',
-    'num_sections',
-    'numstrings',
-    'printables',
-    'sizeof_code',
-    'sizeof_headers',
-    'sizeof_heap_commit',
-    'string_entropy',
-    'symbols',
-    'vsize'
-]
+
 def build_feature_names():
     names = [''] * NUM_EMBER_FEATURES
     base = 0
@@ -115,14 +96,6 @@ def build_feature_names():
 
     return names
 
-def get_non_hashed_features():
-    feature_names = build_feature_names()
-    result = []
-    for i, feature_name in enumerate(feature_names):
-        if '_hash' not in feature_name and 'Histogram' not in feature_name and 'printabledist' not in feature_name and 'directories' not in feature_name:
-            result.append(i)
-    return result
-
 def get_byte_histogram_features():
     result = []
     for i in range(256):
@@ -135,4 +108,10 @@ def get_header_features():
     for i in range(626, 688):
         if '_hash' not in feature_names[i]:
             result.append(i)
+    return result
+
+def get_data_directories_features():
+    result = []
+    for i in range(2351, 2381):
+        result.append(i)
     return result
