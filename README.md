@@ -20,11 +20,10 @@ Make sure you have Docker installed on your system. If not, you can download and
 - #### Option 2: Pulling Images from Docker Hub
   Alternatively, you can pull them directly from Docker Hub using the following commands:
   ```bash
-  docker pull lucapa17/image-server
-  docker pull lucapa17/image-client-evasion
-  docker pull lucapa17/image-client-poisoning
+  docker pull lucapa17/image-server && docker tag lucapa17/image-server image-server
+  docker pull lucapa17/image-client-evasion && docker tag lucapa17/image-client-evasion image-client-evasion
+  docker pull lucapa17/image-client-poisoning && docker tag lucapa17/image-client-poisoning image-client-poisoning
   ```
-  If you choose option 2, remember to update the image names in the Docker Compose files from `image-server`, `image-client-evasion`  and `image-client-poisoning` to `lucapa17/image-server` , `lucapa17/image-client-evasion`  and `lucapa17/image-client-poisoning` respectively.
 ### Running the Containers
 
 After building the images or pulling them from Docker Hub, you can run the containers using Docker Compose files to simulate different attack scenarios on remote classifiers. Remember to place the goodware and malware samples in the `data/goodware_samples` and `data/malware_samples` folders, respectively.
