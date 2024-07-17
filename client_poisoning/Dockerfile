@@ -11,5 +11,5 @@ RUN cmake -S /app/lief -B /app/lief/build -DPYTHON_VERSION=3.9\
     && pip install /app/lief/build/api/python
 RUN mkdir logs
 COPY features_utils.py .
-COPY main.py .
-CMD ["python", "main.py"]
+COPY client_poisoning.py .
+CMD ["python", "client_poisoning.py"]

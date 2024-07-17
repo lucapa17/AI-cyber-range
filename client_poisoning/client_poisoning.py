@@ -166,7 +166,8 @@ if __name__ == "__main__":
         characteristics = pe.FILE_HEADER.Characteristics
         subsystem = pe.OPTIONAL_HEADER.Subsystem
         ddl_characteristics = pe.OPTIONAL_HEADER.DllCharacteristics
-        header_hashed_features_to_analyze.append([machine, characteristics, subsystem, ddl_characteristics])
+        magic = pe.OPTIONAL_HEADER.Magic
+        header_hashed_features_to_analyze.append([machine, characteristics, subsystem, ddl_characteristics, magic])
         pe.close()
     header_hashed_features_to_analyze = np.array(header_hashed_features_to_analyze)
 
@@ -195,6 +196,8 @@ if __name__ == "__main__":
             pe.FILE_HEADER.Characteristics = header_hashed_features_to_analyze[k, 1]
             pe.OPTIONAL_HEADER.Subsystem = header_hashed_features_to_analyze[k, 2]
             pe.OPTIONAL_HEADER.DllCharacteristics = header_hashed_features_to_analyze[k, 3]
+            # Magic cannot be changed because switching between 32 and 64 bit corrupts the file.
+            #pe.OPTIONAL_HEADER.Magic = header_hashed_features_to_analyze[k, 4]
 
             data_directories = [
                 'IMAGE_DIRECTORY_ENTRY_EXPORT',
@@ -282,7 +285,10 @@ if __name__ == "__main__":
         print(f'predicted label: {y_pred}')
         print(f'confidence: {score}')
         print('-' * 20)
-    time.sleep(250)
+    
+    # Wait for the server to update the model   
+    print("***** WAITING FOR THE SERVER TO UPDATE THE MODEL *****")
+    time.sleep(500)
 
     print("***** SENDING FILES TO THE SERVER AFTER POISONING *****")
 

@@ -5,6 +5,6 @@ COPY requirements.txt /tmp
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN git clone https://github.com/lucapa17/toucanstrike
 RUN mkdir logs
-COPY client.sh .
-RUN dos2unix client.sh
-CMD ["bash", "client.sh"]
+COPY client_evasion.sh .
+RUN dos2unix client_evasion.sh
+CMD ["bash", "client_evasion.sh"]

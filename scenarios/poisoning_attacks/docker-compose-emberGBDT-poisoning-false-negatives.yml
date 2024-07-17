@@ -10,10 +10,10 @@ services:
       - classifier=emberGBDT
       - labeling_service=http://labeling_service:8000/analyze
       - load_pretrained_model=false
-      - training_samples=20000
+      - training_samples=50000
       - validation_samples=20000
       - fine_tuning=true
-      - continue_training=true
+      - continue_training=false
       - samples_for_fine_tuning=1000
       - PYTHONUNBUFFERED=1
 
@@ -27,8 +27,8 @@ services:
       - server
     environment:
       - attack=increase_false_negatives
-      - perc_bytes_poisoning=1
-      - num_malware_files=500
+      - perc_bytes_poisoning=2
+      - num_malware_files=100
       - num_goodware_files=1000
       - PYTHONUNBUFFERED=1
 

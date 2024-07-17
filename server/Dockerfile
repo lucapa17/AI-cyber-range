@@ -11,7 +11,7 @@ RUN cmake -S /app/lief -B /app/lief/build -DPYTHON_VERSION=3.9 \
     && pip install /app/lief/build/api/python
 COPY download_extract_ember_dataset.py .
 RUN python download_extract_ember_dataset.py
-COPY main.py .
+COPY server.py .
 COPY embernn.py .
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -69,6 +69,7 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         hash_list_train = []
         hash_list_validation = []
 
+        print("Reading and storing hashes from train and validation file paths..")
         for file_paths, hash_list in zip([file_paths_train, file_paths_validation], [hash_list_train, hash_list_validation]):
             for file_path in file_paths:
                 with open(file_path, 'r') as file:
@@ -84,12 +85,14 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         hash_list_train = np.array(hash_list_train)
         hash_list_validation = np.array(hash_list_validation)
         
+        print("Reading vectorized features for training set..")
         X_train, y_train = ember.read_vectorized_features(
             "ember2018",
             subset="train",
             feature_version=2
         )
 
+        print(f"Shuffling and selecting training samples ({training_samples})..")
         X_train_gw = X_train[y_train == 0].astype(dtype='float64')
         y_train_gw = y_train[y_train == 0]
         X_train_mw = X_train[y_train == 1].astype(dtype='float64')
@@ -109,12 +112,14 @@ elif classifier == "emberGBDT" or classifier == "embernn":
 
         del X_train_gw, X_train_mw, y_train_gw, y_train_mw
 
+        print("Reading vectorized features for validation set..")
         X_validation, y_validation = ember.read_vectorized_features(
             "ember2018",
             subset="test",
             feature_version=2
         )
 
+        print(f"Shuffling and selecting validation samples ({validation_samples})..")
         X_validation_gw = X_validation[y_validation == 0].astype(dtype='float64')
         y_validation_gw = y_validation[y_validation == 0]
         X_validation_mw = X_validation[y_validation == 1].astype(dtype='float64')
@@ -132,6 +137,7 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         
         del X_validation_gw, X_validation_mw, y_validation_gw, y_validation_mw
         
+        print("Combining hash lists..")
         hash_list = np.concatenate((hash_list_train_gw[indices_train],
                                     hash_list_train_mw[indices_train],
                                     hash_list_validation_gw[indices_validation],
@@ -140,6 +146,7 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         del hash_list_train_gw, hash_list_train_mw, hash_list_validation_gw, hash_list_validation_mw
 
         print("Ember dataset loading complete.")
+        
         print("shape X_train: ", X_train.shape)
         print("shape y_train: ", y_train.shape)
         print("shape X_validation: ", X_validation.shape)

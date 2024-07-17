@@ -11,10 +11,11 @@ services:
       - labeling_service=metadefender
       - apiKeys=apikey1,apikey2,apikey3
       - load_pretrained_model=false
-      - training_samples=6000
-      - validation_samples=6000
+      - training_samples=50000
+      - validation_samples=20000
       - fine_tuning=true
-      - samples_for_fine_tuning=250
+      - continue_training=false
+      - samples_for_fine_tuning=1000
       - PYTHONUNBUFFERED=1
 
   client:
@@ -28,6 +29,6 @@ services:
     environment:
       - attack=increase_false_positives
       - perc_bytes_poisoning=1
-      - num_malware_files=250
-      - num_goodware_files=250
+      - num_malware_files=1000
+      - num_goodware_files=100
       - PYTHONUNBUFFERED=1
