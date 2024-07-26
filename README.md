@@ -20,9 +20,9 @@ Make sure you have Docker installed on your system. If not, you can download and
 - #### Option 2: Pulling Images from Docker Hub
   Alternatively, you can pull them directly from Docker Hub using the following commands:
   ```bash
-  docker pull lucapa17/image-server && docker tag lucapa17/image-server image-server
-  docker pull lucapa17/image-client-evasion && docker tag lucapa17/image-client-evasion image-client-evasion
-  docker pull lucapa17/image-client-poisoning && docker tag lucapa17/image-client-poisoning image-client-poisoning
+  docker pull lucapa17/ai-cyber-range:server && docker tag lucapa17/ai-cyber-range:server image-server && docker rmi lucapa17/ai-cyber-range:server
+  docker pull lucapa17/ai-cyber-range:client-evasion && docker tag lucapa17/ai-cyber-range:client-evasion image-client-evasion && docker rmi lucapa17/ai-cyber-range:client-evasion
+  docker pull lucapa17/ai-cyber-range:client-poisoning && docker tag lucapa17/ai-cyber-range:client-poisoning image-client-poisoning && docker rmi lucapa17/ai-cyber-range:client-poisoning
   ```
 ### Running the Containers
 
