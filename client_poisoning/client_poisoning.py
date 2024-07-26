@@ -293,7 +293,7 @@ if __name__ == "__main__":
     
     # Wait for the server to update the model   
     print("***** WAITING FOR THE SERVER TO UPDATE THE MODEL *****")
-    time_to_wait = len(os.listdir(poisoned_folder))*2 + 100
+    time_to_wait = len(os.listdir(poisoned_folder))*2
     print(f"{len(os.listdir(poisoned_folder))} poisoned file sent, waiting {time_to_wait} seconds")
     time.sleep(time_to_wait)
 
