@@ -27,7 +27,8 @@ services:
       - server
     environment:
       - attack=increase_false_negatives
-      - perc_bytes_poisoning=2
+      # padding will be 50% of the original file size
+      - perc_bytes_padding=0.5 
       - num_malware_files=100
       - num_goodware_files=1000
       - PYTHONUNBUFFERED=1

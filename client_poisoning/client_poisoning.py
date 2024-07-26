@@ -20,21 +20,25 @@ def check_server_availability(url):
 
 
 if __name__ == "__main__":
-    while not check_server_availability("http://server:8000"):
-        time.sleep(5)
-
+    
+    time.sleep(30)
+    
     byte_histogram_features = np.array(features_utils.get_byte_histogram_features())
     header_features =  np.array(features_utils.get_header_features())
     data_directories_features =  np.array(features_utils.get_data_directories_features())
 
     attack = os.getenv("attack")
-    perc_bytes_poisoning = os.getenv("perc_bytes_poisoning")
+    perc_bytes_padding = os.getenv("perc_bytes_padding")
     num_malware_files = os.getenv("num_malware_files")
     num_goodware_files = os.getenv("num_goodware_files")
 
     if attack not in ["increase_false_negatives", "increase_false_positives"]:
         raise ValueError("Unrecognized attack. Attack strategy must be either 'increase_false_negatives' or 'increase_false_positives'")
-
+    if not num_malware_files.isdigit() or not num_goodware_files.isdigit():
+        raise ValueError("Number of malware and goodware files must be integers")
+    if not 0 <= float(perc_bytes_padding) < 1:
+        raise ValueError("Percentage of bytes padding must be a float between 0 and 1")
+    
     malware_folder = "/app/malware_samples/"
     goodware_folder = "/app/goodware_samples/"
     poisoned_malware_folder = "/app/poisoned_malware_samples/"
@@ -63,43 +67,39 @@ if __name__ == "__main__":
 
     X_gw = []
     X_mw = []
-    y_gw = []
-    y_mw = []
     length_gw = []
     length_mw = []
     file_path_gw = []
     file_path_mw = []
 
     extractor = ember.PEFeatureExtractor(feature_version=2)
+    
+    print("***** EXTRACTING FEATURES FROM GOODWARE AND MALWARE*****")
 
     for file_name in selected_goodware_files:
         file_path = os.path.join(goodware_folder, file_name)
         with open(file_path, 'rb') as file:
             content = file.read()
-            try:
-                X_gw.append(extractor.feature_vector(content).astype(dtype='float64'))
-                y_gw.append(0)
-                length_gw.append(len(content))
-                file_path_gw.append(file_path)
-            except Exception as e:
-                print("Error for file ", file_name, ": ", e)
+        try:
+            X_gw.append(extractor.feature_vector(content).astype(dtype='float64'))
+            length_gw.append(len(content))
+            file_path_gw.append(file_path)
+        except Exception as e:
+            print("Error for file ", file_name, ": ", e)
 
     for file_name in selected_malware_files:
         file_path = os.path.join(malware_folder, file_name)
         with open(file_path, 'rb') as file:
             content = file.read()
-            try: 
-                X_mw.append(extractor.feature_vector(content).astype(dtype='float64'))
-                y_mw.append(1)
-                length_mw.append(len(content))
-                file_path_mw.append(file_path)
-            except Exception as e:
-                print("Error for file ", file_name, ": ", e)
+        try: 
+            X_mw.append(extractor.feature_vector(content).astype(dtype='float64'))
+            length_mw.append(len(content))
+            file_path_mw.append(file_path)
+        except Exception as e:
+            print("Error for file ", file_name, ": ", e)
             
     X_gw = np.array(X_gw)
     X_mw = np.array(X_mw)
-    y_gw = np.array(y_gw)
-    y_mw = np.array(y_mw)
     print("shape X_gw: ", X_gw.shape)
     print("shape X_mw: ", X_mw.shape) 
 
@@ -113,15 +113,15 @@ if __name__ == "__main__":
 
     x_values = np.arange(256)
 
-    plt.title("Byte Distribution of Goodwares")
-    plt.plot(x_values, byte_probability_distribution_gw*100, label = "Goodwares", marker="braille", color="green")
+    plt.title("Byte Distribution of Goodware")
+    plt.plot(x_values, byte_probability_distribution_gw*100, label = "Goodware", marker="braille", color="green")
     plt.yfrequency(10)
     plt.xfrequency(10)
     plt.grid(horizontal=True)
     plt.show()
     plt.clf()
-    plt.title("Byte Distribution of Malwares")
-    plt.plot(x_values, byte_probability_distribution_mw*100, label = "Malwares", marker="braille", color="red")
+    plt.title("Byte Distribution of Malware")
+    plt.plot(x_values, byte_probability_distribution_mw*100, label = "Malware", marker="braille", color="red")
     plt.yfrequency(10)
     plt.xfrequency(10)
     plt.grid(horizontal=True)
@@ -130,7 +130,6 @@ if __name__ == "__main__":
     print("***** CREATING POISONED SAMPLES *****")
     
     if attack == "increase_false_negatives":
-        X_to_poison = X_gw
         X_to_analyze = X_mw
         if not os.path.exists(poisoned_goodware_folder):
             os.makedirs(poisoned_goodware_folder)
@@ -141,7 +140,6 @@ if __name__ == "__main__":
         y_value = 0
         
     elif attack == "increase_false_positives":
-        X_to_poison = X_mw
         X_to_analyze = X_gw
         if not os.path.exists(poisoned_malware_folder):
             os.makedirs(poisoned_malware_folder)
@@ -172,7 +170,6 @@ if __name__ == "__main__":
     header_hashed_features_to_analyze = np.array(header_hashed_features_to_analyze)
 
     X_poisoned = []
-    y_poisoned = []
 
     for i, file in enumerate(file_path_to_poison):
         k = random.randint(0, len(X_to_analyze) - 1)
@@ -225,14 +222,13 @@ if __name__ == "__main__":
             pe.write(file_path)
             pe.close()
             
-            size = math.ceil((length_file_to_poison[i])*int(perc_bytes_poisoning))
+            size = math.ceil((length_file_to_poison[i])*float(perc_bytes_padding)/(1-float(perc_bytes_padding)))
             random_bytes = np.random.choice(np.arange(256), size=size, p=byte_histograms_to_analyze[k])
             
             with open(file_path, 'rb') as file:
                 content = file.read()
                 updated_content = content + bytes(random_bytes.tolist())
                 X_poisoned.append(extractor.feature_vector(updated_content).astype(dtype='float64'))
-                y_poisoned.append(y_value)
                 with open(file_path, "wb") as file:
                     file.write(updated_content)
                     file.close()
@@ -241,9 +237,10 @@ if __name__ == "__main__":
             print("Error for file ", file_path_to_poison[i], ": ", e)
             if os.path.exists(file_path):
                 os.remove(file_path)
-                
+    
+    del X_mw, X_gw 
+               
     X_poisoned = np.array(X_poisoned)
-    y_poisoned = np.array(y_poisoned)
 
     byte_histogram_features_poisoned = X_poisoned[:, byte_histogram_features]
     total_histogram_poisoned = np.sum(byte_histogram_features_poisoned, axis=0)
@@ -253,20 +250,27 @@ if __name__ == "__main__":
 
     if attack == "increase_false_negatives":
         plt.clf()
-        plt.title("Byte Distribution of Goodwares after poisoning")
-        plt.plot(x_values, byte_probability_distribution_poisoned*100, label = "Goodwares after poisoning", marker="braille", color="green")
+        plt.title("Byte Distribution of Goodware after poisoning")
+        plt.plot(x_values, byte_probability_distribution_poisoned*100, label = "Goodware after poisoning", marker="braille", color="green")
         plt.yfrequency(10)
         plt.xfrequency(10)
         plt.grid(horizontal=True)
         plt.show()
     elif attack == "increase_false_positives":
         plt.clf()
-        plt.title("Byte Distribution of Malwares after poisoning")
-        plt.plot(x_values, byte_probability_distribution_poisoned*100, label = "Malwares  after poisoning", marker="braille", color="red")
+        plt.title("Byte Distribution of Malware after poisoning")
+        plt.plot(x_values, byte_probability_distribution_poisoned*100, label = "Malware  after poisoning", marker="braille", color="red")
         plt.yfrequency(10)
         plt.xfrequency(10)
         plt.grid(horizontal=True)
         plt.show()
+    
+    del X_poisoned
+        
+    print("***** WAITING FOR THE SERVER TO BE AVAILABLE *****")
+    
+    while not check_server_availability("http://server:8000"):
+        time.sleep(5)
 
     print("***** SENDING POISONED FILES TO THE SERVER *****")
         
@@ -276,19 +280,22 @@ if __name__ == "__main__":
     for file_name in os.listdir(poisoned_folder):
         file_path = os.path.join(poisoned_folder, file_name)
         with open(file_path, 'rb') as file:
-            code = file.read()
+            content = file.read()
         print(f'Computing prediction for {file_name}')
-        code = CArray(np.frombuffer(code, dtype=np.uint8)).atleast_2d()
-        y_pred, confidence = remote_classifier.predict(code, return_decision_function=True)
+        content = CArray(np.frombuffer(content, dtype=np.uint8)).atleast_2d()
+        y_pred, confidence = remote_classifier.predict(content, return_decision_function=True)
         y_pred = y_pred.item()
         score = confidence[0, 1].item()
         print(f'predicted label: {y_pred}')
         print(f'confidence: {score}')
         print('-' * 20)
+        time.sleep(1)
     
     # Wait for the server to update the model   
     print("***** WAITING FOR THE SERVER TO UPDATE THE MODEL *****")
-    time.sleep(500)
+    time_to_wait = len(os.listdir(poisoned_folder))*2 + 100
+    print(f"{len(os.listdir(poisoned_folder))} poisoned file sent, waiting {time_to_wait} seconds")
+    time.sleep(time_to_wait)
 
     print("***** SENDING FILES TO THE SERVER AFTER POISONING *****")
 
@@ -297,12 +304,12 @@ if __name__ == "__main__":
         'total': 0,
         'confidence': 0,
     }
-    for file_path in       file_path_to_analyze:
+    for file_path in file_path_to_analyze:
         with open(file_path, 'rb') as file:
             content = file.read()
         print(f'Computing prediction for {os.path.basename(file_path)}')
-        code = CArray(np.frombuffer(content, dtype=np.uint8)).atleast_2d()
-        y_pred, confidence = remote_classifier.predict(code, return_decision_function=True)
+        content = CArray(np.frombuffer(content, dtype=np.uint8)).atleast_2d()
+        y_pred, confidence = remote_classifier.predict(content, return_decision_function=True)
         y_pred = y_pred.item()
         score = confidence[0, 1].item()
         stats['detected'] += int(y_pred != 0)
@@ -311,6 +318,7 @@ if __name__ == "__main__":
         print(f'predicted label: {y_pred}')
         print(f'confidence: {score}')
         print('-' * 20)
+        time.sleep(1)
         
     print("\nAttack completed, report:")
     if attack == "increase_false_negatives":

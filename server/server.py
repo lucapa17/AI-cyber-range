@@ -17,7 +17,6 @@ from sklearn.metrics import roc_curve
 app = FastAPI()
 
 # global variables
-files = []
 hash_list = []
 X_train = None
 y_train = None
@@ -27,6 +26,9 @@ next_fine_tuning = 0
 count = 0
 model_version = 0
 selected_threshold = 0
+n_files_to_label = 0
+new_files_directory = "new_files"
+remote_classifier = None
 
 classifier = os.getenv("classifier")
 labeling_service = os.getenv("labeling_service")
@@ -57,6 +59,8 @@ elif classifier == "emberGBDT" or classifier == "embernn":
     else: 
         print("Loading Ember dataset..")
         
+        # Ember training dataset has 600,000 samples
+        # Ember validation dataset has 200,000 samples
         file_paths_train = [
             "ember2018/train_features_0.jsonl",
             "ember2018/train_features_1.jsonl",
@@ -66,10 +70,14 @@ elif classifier == "emberGBDT" or classifier == "embernn":
             "ember2018/train_features_5.jsonl"
         ]
         file_paths_validation = ["ember2018/test_features.jsonl"]
+        
+        if training_samples is None or validation_samples is None or int(training_samples) <= 0 or int(validation_samples) <= 0:
+            raise ValueError("Invalid training and validation samples. Please specify a positive number <= 600,000 and <= 200,000 respectively.")
+        elif int(training_samples) > 600000 or int(validation_samples) > 200000:
+            raise ValueError("Training and validation samples should not exceed 600,000 and 200,000 respectively.")
+        
         hash_list_train = []
         hash_list_validation = []
-
-        print("Reading and storing hashes from train and validation file paths..")
         for file_paths, hash_list in zip([file_paths_train, file_paths_validation], [hash_list_train, hash_list_validation]):
             for file_path in file_paths:
                 with open(file_path, 'r') as file:
@@ -93,24 +101,22 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         )
 
         print(f"Shuffling and selecting training samples ({training_samples})..")
-        X_train_gw = X_train[y_train == 0].astype(dtype='float64')
-        y_train_gw = y_train[y_train == 0]
-        X_train_mw = X_train[y_train == 1].astype(dtype='float64')
-        y_train_mw = y_train[y_train == 1]
+        indices_train_gw = np.where(y_train == 0)[0]
+        indices_train_mw = np.where(y_train == 1)[0]
 
-        hash_list_train_gw = hash_list_train[y_train == 0]
-        hash_list_train_mw = hash_list_train[y_train == 1]
+        # Set seed and shuffle indices
+        np.random.seed(47)
+        np.random.shuffle(indices_train_gw)
+        np.random.shuffle(indices_train_mw)
+        
+        # Select half of the samples from each class
+        half_training_samples = int(training_samples) // 2
+        selected_indices_train_gw = indices_train_gw[:half_training_samples]
+        selected_indices_train_mw = indices_train_mw[:half_training_samples]
 
-        np.random.seed(42)
-
-        all_indices_train = np.arange(len(X_train_gw))
-        np.random.shuffle(all_indices_train)
-        indices_train = all_indices_train[:int(int(training_samples)/2)]
-
-        X_train = np.concatenate((X_train_gw[indices_train], X_train_mw[indices_train]), axis=0)
-        y_train = np.concatenate((y_train_gw[indices_train], y_train_mw[indices_train]), axis=0)
-
-        del X_train_gw, X_train_mw, y_train_gw, y_train_mw
+        # Create new arrays by concatenating the selections
+        X_train = np.concatenate((X_train[selected_indices_train_gw], X_train[selected_indices_train_mw]), axis=0)
+        y_train = np.concatenate((y_train[selected_indices_train_gw], y_train[selected_indices_train_mw]), axis=0)
 
         print("Reading vectorized features for validation set..")
         X_validation, y_validation = ember.read_vectorized_features(
@@ -120,30 +126,30 @@ elif classifier == "emberGBDT" or classifier == "embernn":
         )
 
         print(f"Shuffling and selecting validation samples ({validation_samples})..")
-        X_validation_gw = X_validation[y_validation == 0].astype(dtype='float64')
-        y_validation_gw = y_validation[y_validation == 0]
-        X_validation_mw = X_validation[y_validation == 1].astype(dtype='float64')
-        y_validation_mw = y_validation[y_validation == 1]
-
-        hash_list_validation_gw = hash_list_validation[y_validation == 0]
-        hash_list_validation_mw = hash_list_validation[y_validation == 1]
-
-        all_indices_validation = np.arange(len(X_validation_gw))
-        np.random.shuffle(all_indices_validation)
-        indices_validation = all_indices_validation[:int(int(validation_samples)/2)]
-
-        X_validation = np.concatenate((X_validation_gw[indices_validation], X_validation_mw[indices_validation]), axis=0)
-        y_validation = np.concatenate((y_validation_gw[indices_validation], y_validation_mw[indices_validation]), axis=0)
+        indices_validation_gw = np.where(y_validation == 0)[0]
+        indices_validation_mw = np.where(y_validation == 1)[0]
         
-        del X_validation_gw, X_validation_mw, y_validation_gw, y_validation_mw
+        np.random.seed(47)
+        np.random.shuffle(indices_validation_gw)
+        np.random.shuffle(indices_validation_mw)
+        
+        half_validation_samples = int(validation_samples) // 2
+        selected_indices_validation_gw = indices_validation_gw[:half_validation_samples]
+        selected_indices_validation_mw = indices_validation_mw[:half_validation_samples]
+        
+        X_validation = np.concatenate((X_validation[selected_indices_validation_gw], X_validation[selected_indices_validation_mw]), axis=0)
+        y_validation = np.concatenate((y_validation[selected_indices_validation_gw], y_validation[selected_indices_validation_mw]), axis=0)
         
         print("Combining hash lists..")
-        hash_list = np.concatenate((hash_list_train_gw[indices_train],
-                                    hash_list_train_mw[indices_train],
-                                    hash_list_validation_gw[indices_validation],
-                                    hash_list_validation_mw[indices_validation]), axis=0)
+
+        hash_list = np.concatenate((hash_list_train[selected_indices_train_gw],
+                                    hash_list_train[selected_indices_train_mw],
+                                    hash_list_validation[selected_indices_validation_gw],
+                                    hash_list_validation[selected_indices_validation_mw]), axis=0)
         
-        del hash_list_train_gw, hash_list_train_mw, hash_list_validation_gw, hash_list_validation_mw
+        del hash_list_train, hash_list_validation
+        del indices_train_gw, indices_train_mw, indices_validation_gw, indices_validation_mw
+        del selected_indices_train_gw, selected_indices_train_mw, selected_indices_validation_gw, selected_indices_validation_mw
 
         print("Ember dataset loading complete.")
         
@@ -191,30 +197,39 @@ else:
     raise ValueError("Classifier not specified or invalid. Please specify 'malconv' or 'emberGBDT' or 'embernn' as the classifier.")
 
 
-def label_data(files):
-    if isValidUrl(labeling_service):
-        remote_classifier = CClassifierRemote(url=labeling_service)
-    else:
-        remote_classifier = CClassifierRemote(antivirus=labeling_service, apiKey=apiKeys.split(","))
-    print("antivirus labeling service", labeling_service)
-    print("Labeling files...")
-    y_new = []
-    for file in files:
-        pred, confidence = remote_classifier.predict(CArray(np.frombuffer(file, dtype=np.uint8)).atleast_2d(), return_decision_function=True)
-        print(f"Prediction: {'malware' if pred.item() == 1 else 'goodware'}. Score: {confidence[0, 1].item()}")
-        y_new.append(pred.item())
-    print("Labeling complete.")
-    return y_new
+def label_data(file, file_name):
+    global remote_classifier
+    if remote_classifier is None:
+        if isValidUrl(labeling_service):
+            remote_classifier = CClassifierRemote(url=labeling_service)
+        else:
+            remote_classifier = CClassifierRemote(antivirus=labeling_service, apiKey=apiKeys.split(","))
+        print("Antivirus Labeling Service: ", labeling_service)
+        
+    print("Labeling file: ", file_name)
+    
+    pred, confidence = remote_classifier.predict(CArray(np.frombuffer(file, dtype=np.uint8)).atleast_2d(), return_decision_function=True)
+    print(f"Prediction: {'malware' if pred.item() == 1 else 'goodware'}. Score: {confidence[0, 1].item()}")
+
+    return pred.item()
 
 
 async def process_fine_tuning():
     print("Fine tuning in progress...")
-    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net
+    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net, new_files_directory
     X = []
+    y = []
     extractor = ember.PEFeatureExtractor(feature_version=2)
-    for file in files:
-        X.append(extractor.feature_vector(file).astype(dtype='float64'))
-    y = label_data(files)
+    for filename in os.listdir(new_files_directory):
+        file_path = os.path.join(new_files_directory, filename)
+        if os.path.isfile(file_path):
+            with open(file_path, 'rb') as file:
+                file_content = file.read()
+                
+            X.append(extractor.feature_vector(file_content).astype(dtype='float64'))
+            y.append(label_data(file_content, filename))
+            os.remove(file_path)
+    
     X = np.array(X)
     y = np.array(y)
 
@@ -234,7 +249,6 @@ async def process_fine_tuning():
             net = EmberNN(X_train.shape[1])
             net.fit(X_train, y_train)
 
-    files.clear()
     for entry in hash_list:
         if 'prediction' in entry:
             del entry['prediction']
@@ -275,7 +289,7 @@ async def process_fine_tuning():
 
 @app.post('/analyze')
 async def analyze(request: Request):
-    global count, next_fine_tuning, selected_threshold, net
+    global count, next_fine_tuning, selected_threshold, net, n_files_to_label, new_files_directory
     
     data = await request.body()
     fp = request.headers.get("Filename")
@@ -303,7 +317,10 @@ async def analyze(request: Request):
         }
         hash_list.append(hash_entry)
         if fine_tuning and (classifier == "emberGBDT" or classifier == "embernn"):
-            files.append(data)
+            file_path = os.path.join(new_files_directory, f"{hash_value}.file")
+            with open(file_path, 'wb') as file:
+                file.write(data)
+            n_files_to_label+=1
     else:
         existing_entry_index = next((i for i, entry in enumerate(hash_list) if entry['sha256'] == hash_value))
         existing_entry = hash_list[existing_entry_index]
@@ -339,8 +356,9 @@ async def analyze(request: Request):
         json.dump(encoded_data, file)
         file.write('\n')
        
-    if fine_tuning and len(files) >= int(samples_for_fine_tuning) and time.time() >= next_fine_tuning:
+    if fine_tuning and n_files_to_label >= int(samples_for_fine_tuning) and time.time() >= next_fine_tuning:
         asyncio.create_task(process_fine_tuning())
+        n_files_to_label = 0
 
     response = {
         "label": prediction,

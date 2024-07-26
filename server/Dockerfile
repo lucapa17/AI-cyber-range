@@ -13,5 +13,6 @@ COPY download_extract_ember_dataset.py .
 RUN python download_extract_ember_dataset.py
 COPY server.py .
 COPY embernn.py .
+RUN mkdir -p /app/new_files
 EXPOSE 8000
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
