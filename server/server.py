@@ -13,6 +13,8 @@ import asyncio
 import time
 import hashlib
 from sklearn.metrics import roc_curve
+import threading
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -29,6 +31,7 @@ selected_threshold = 0
 n_files_to_label = 0
 new_files_directory = "new_files"
 remote_classifier = None
+is_updating = False
 
 classifier = os.getenv("classifier")
 labeling_service = os.getenv("labeling_service")
@@ -214,9 +217,11 @@ def label_data(file, file_name):
     return pred.item()
 
 
-async def process_fine_tuning():
+def process_fine_tuning():
     print("Fine tuning in progress...")
-    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net, new_files_directory
+    global X_train, y_train, X_validation, y_validation, next_fine_tuning, model_version, selected_threshold, net, new_files_directory, is_updating
+    
+    is_updating = True
     X = []
     y = []
     extractor = ember.PEFeatureExtractor(feature_version=2)
@@ -285,11 +290,18 @@ async def process_fine_tuning():
     current_time = time.time()
     next_fine_tuning = current_time + one_day_in_seconds
     print("Next fine-tuning: ", datetime.datetime.fromtimestamp(next_fine_tuning).strftime('%Y-%m-%d %H:%M:%S'))
+    is_updating = False
 
 
 @app.post('/analyze')
 async def analyze(request: Request):
-    global count, next_fine_tuning, selected_threshold, net, n_files_to_label, new_files_directory
+    global count, next_fine_tuning, selected_threshold, net, n_files_to_label, new_files_directory, is_updating
+    
+    if is_updating:
+        return JSONResponse(
+            status_code=503,
+            content={"message": "Server is updating the model. Please try again later."}
+        )
     
     data = await request.body()
     fp = request.headers.get("Filename")
@@ -357,7 +369,7 @@ async def analyze(request: Request):
         file.write('\n')
        
     if fine_tuning and n_files_to_label >= int(samples_for_fine_tuning) and time.time() >= next_fine_tuning:
-        asyncio.create_task(process_fine_tuning())
+        threading.Thread(target=process_fine_tuning).start()
         n_files_to_label = 0
 
     response = {
