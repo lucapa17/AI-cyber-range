@@ -304,12 +304,25 @@ if __name__ == "__main__":
         'total': 0,
         'confidence': 0,
     }
+    
     for file_path in file_path_to_analyze:
         with open(file_path, 'rb') as file:
             content = file.read()
         print(f'Computing prediction for {os.path.basename(file_path)}')
         content = CArray(np.frombuffer(content, dtype=np.uint8)).atleast_2d()
-        y_pred, confidence = remote_classifier.predict(content, return_decision_function=True)
+        
+        while True:
+            try:
+                y_pred, confidence = remote_classifier.predict(content, return_decision_function=True)
+                break
+            except ConnectionError as e:
+                print("An error occurred: ", e)
+                if "503" in str(e):
+                    print("Server is updating, retrying in 1 minute...")
+                    time.sleep(60)
+                else:
+                    raise e
+        
         y_pred = y_pred.item()
         score = confidence[0, 1].item()
         stats['detected'] += int(y_pred != 0)
