@@ -1,6 +1,11 @@
 # Master-Thesis
 This repository contains Dockerfiles and Docker Compose configuration for creating and running containers to simulate various attack scenarios on remote classifiers. Follow the instructions below to build and run these containers.
 
+## Academic Context
+This project has been developed as part of a Master's Thesis in Computer Engineering. The repository, experiments, and scenarios presented here support the analysis and evaluation discussed in the accompanying thesis document and presentation.
+- ***[Thesis document (PDF)](https://github.com/user-attachments/files/24674521/Pastore_Tesi_Unige.pdf)***: provides the full theoretical background, system design, experimental methodology, and results.
+- ***[Project presentation (PPTX)](https://github.com/user-attachments/files/24674550/Pastore_Luca.pptx)***: summarizes the main goals, architecture, attack scenarios, and key findings.
+  
 ## Prerequisites
 
 Make sure you have Docker installed on your system. If not, you can download and install Docker from [Docker's official website](https://www.docker.com/get-started).
